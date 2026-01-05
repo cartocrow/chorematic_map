@@ -12,9 +12,9 @@ set(INSTALL_SCRIPT_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_SCRIPT_DIR})
 
 set(CARTOCROW_INSTALL_DIR "${CMAKE_INSTALL_SOURCE_DIR}/cartocrow")
 
-project(cartocrow-modulename
+project(chorematic_map
     VERSION 0.0.1
-    DESCRIPTION "CartoCrow TemplateModule"
+    DESCRIPTION "CartoCrow Chorematic Map"
     LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)

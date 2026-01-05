@@ -1,5 +1,7 @@
-# Template Module
-Template repository for CartoCrow modules.
+# CartoCrow: Chorematic Map
+The chorematic_map module implements an algorithm for summarizing classed region maps with a single disk choreme.
+The algorithm is described in the following paper.
+> Steven van den Broek, Wouter Meulemans, Andreas Reimer, and Bettina Speckmann. Summarizing classed region maps with a disk choreme.
 
 ## Dependencies
 This module depends on the following libraries:
@@ -20,9 +22,14 @@ This module depends on the following libraries:
 
 ## Usage
 
-Add a description on how to run the module on some example data.
+Run `chorematic_map_gui` in the root directory or use a JSON file with the command-line interface.
+For example, to create a chorematic diagram of the Netherlands that shows the average distance to the nearest pharmacy, run the following command in the root directory.
+```
+chorematic_map_cl data/chorematic_map-dutch.json output.svg data/gemeenten-2022_5000vtcs.ipe
+```
+This creates an `output.svg` file with the diagram.
 
 ## License
 
-Copyright (c) <years> <copyright holder>
+Copyright (c) 2025 TU Eindhoven
 Licensed under the GPLv3.0 license. See LICENSE for details.
