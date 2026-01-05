@@ -1,4 +1,6 @@
 # CartoCrow: Chorematic Map
+[![DOI](https://zenodo.org/badge/1128254673.svg)](https://doi.org/10.5281/zenodo.18155179)
+
 The chorematic_map module implements an algorithm for summarizing classed region maps with a single disk choreme.
 The algorithm is described in the following paper.
 > Steven van den Broek, Wouter Meulemans, Andreas Reimer, and Bettina Speckmann. Summarizing classed region maps with a disk choreme. To appear in the International Journal of Cartography. 
