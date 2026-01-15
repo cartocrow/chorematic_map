@@ -1,6 +1,5 @@
 set(SOURCES
     chorematic_map_gui.cpp
-    ../widgets/double_slider.cpp
 )
 
 add_executable(chorematic_map_gui ${SOURCES})
@@ -12,6 +11,7 @@ target_link_libraries(
     cartocrow::core
     cartocrow::renderer
     cartocrow::reader
+    cartocrow::widgets
     CGAL::CGAL
     GDAL::GDAL
     Qt5::Widgets

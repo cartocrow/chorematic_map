@@ -14,7 +14,7 @@
 #include "library/weighted_point.h"
 #include "library/input_parsing.h"
 
-#include "frontend/widgets/double_slider.h"
+#include <cartocrow/widgets/double_slider.h>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QLabel>
