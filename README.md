@@ -8,7 +8,7 @@ The algorithm is described in the following paper.
 ## Dependencies
 This module depends on the following libraries:
 
-* [Cartocrow/core](https://github.com/cartocrow/core)
+* [Cartocrow/core](https://github.com/cartocrow/core) (v0.1.0)
 
 CartoCrow/core can be cloned and built using CMake as described in <https://github.com/cartocrow/core>
 
