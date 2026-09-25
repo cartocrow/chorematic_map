@@ -1,5 +1,6 @@
 #include "input_parsing.h"
 #include "cartocrow/reader/gdal_conversion.h"
+#include <cartocrow/reader/geojson_reader.h>
 
 namespace cartocrow::chorematic_map {
 std::shared_ptr<std::unordered_map<std::string, RegionWeight>>
@@ -89,10 +90,10 @@ std::shared_ptr<RegionMap> regionMapFromGPKG(const std::filesystem::path& path,
         poGeometry = poFeature->GetGeometryRef();
         if( wkbFlatten(poGeometry->getGeometryType()) == wkbMultiPolygon ) {
             OGRMultiPolygon *poMultiPolygon = poGeometry->toMultiPolygon();
-            polygonSet = ogrMultiPolygonToPolygonSet(*poMultiPolygon);
+            polygonSet = pretendExact(ogrMultiPolygonToPolygonSetRaw(*poMultiPolygon)).polygonSet();
         } else if (wkbFlatten(poGeometry->getGeometryType()) == wkbPolygon) {
             OGRPolygon* poly = poGeometry->toPolygon();
-            polygonSet = ogrPolygonToPolygonSet(*poly);
+            polygonSet = pretendExact(ogrPolygonToPolygonSetRaw(*poly)).polygonSet();
         } else {
             std::cout << "Did not handle this type of geometry: " << poGeometry->getGeometryName() << std::endl;
         }

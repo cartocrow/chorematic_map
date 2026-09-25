@@ -1,6 +1,6 @@
 #include "choropleth.h"
 #include <cartocrow/core/arrangement_helpers.h>
-#include <cartocrow/core/centroid.h>
+#include <cartocrow/core/polygon_helpers.h>
 #include <cartocrow/core/rectangle_helpers.h>
 
 namespace cartocrow::chorematic_map {

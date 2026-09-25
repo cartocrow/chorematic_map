@@ -16,6 +16,7 @@
 #include <utility>
 
 #include "library/input_parsing.h"
+#include "library/geojson_parsing.h"
 #include "library/maximum_weight_disk.h"
 #include <cartocrow/circle_segment_helpers/cs_polygon_helpers.h>
 #include <cartocrow/core/arrangement_map.h>
@@ -160,7 +161,7 @@ void ChorematicMapDemo::refit() {
 
 void ChorematicMapDemo::loadMap(const std::filesystem::path& mapPath) {
 	auto ext = mapPath.extension();
-	if (ext != ".ipe" && ext != ".gpkg") {
+	if (ext != ".ipe" && ext != ".gpkg" && ext != ".geojson") {
 		std::cerr << "Cannot load map from file of type " << ext << std::endl;
 	}
 	m_sample.m_points.clear();
@@ -170,10 +171,16 @@ void ChorematicMapDemo::loadMap(const std::filesystem::path& mapPath) {
 	if (ext == ".ipe") {
 		auto regionMap = ipeToRegionMap(mapPath, m_labelAtCentroid->isChecked());
 		newArr = std::make_shared<RegionArrangement>(regionMapToArrangementParallel(regionMap));
-	} else {
-		auto regionMap = regionMapFromGPKG(mapPath, m_regionNameAttribute->text().toStdString());
-		newArr = std::make_shared<RegionArrangement>(regionMapToArrangementParallel(*regionMap));
-	}
+	} else if (ext == ".geojson") {
+        std::ifstream file(mapPath);
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        auto [regionMap, data] = parseGeoJSON(buffer.str(), "name");
+        newArr = std::make_shared<RegionArrangement>(regionMapToArrangement(*regionMap));
+    } else {
+        auto regionMap = regionMapFromGPKG(mapPath, m_regionNameAttribute->text().toStdString());
+        newArr = std::make_shared<RegionArrangement>(regionMapToArrangementParallel(*regionMap));
+    }
 	m_sampler->setRegionArr(newArr);
 	m_choropleth->m_arr = newArr;
 }

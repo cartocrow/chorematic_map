@@ -1,9 +1,8 @@
-#ifndef CARTOCROW_SAMPLER_H
-#define CARTOCROW_SAMPLER_H
+#pragma once
 
 #include <cartocrow/core/arrangement_helpers.h>
+#include <cartocrow/core/polygon_helpers.h>
 #include <cartocrow/core/region_arrangement.h>
-#include <cartocrow/core/centroid.h>
 #include <cartocrow/core/rectangle_helpers.h>
 
 #include <cartocrow/core/region_map.h>
@@ -947,4 +946,3 @@ class Sampler {
 };
 }
 
-#endif //CARTOCROW_SAMPLER_H
