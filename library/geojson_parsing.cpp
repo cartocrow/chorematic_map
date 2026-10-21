@@ -9,9 +9,9 @@ parseGeoJSON(std::string geojson, std::string regionNameAttribute) {
     auto weightMap = std::make_shared<std::unordered_map<std::string, RegionWeight>>();
 
     GeoJSONReader reader(geojson);
-    auto features = reader.read<Multiple, PolygonSetRaw<Inexact>, WithAttributes>();
+    auto features = reader.read<Multiple, MultipolygonWithHoles<Inexact>, WithAttributes>();
 
-    auto getName = [regionNameAttribute](const GeometricFeature<PolygonSetRaw<Inexact>>& feature) -> std::optional<std::string> {
+    auto getName = [regionNameAttribute](const GeometricFeature<MultipolygonWithHoles<Inexact>>& feature) -> std::optional<std::string> {
         if (!feature.attributes.contains(regionNameAttribute)) {
             std::cerr << "Feature does not have attribute " << regionNameAttribute << std::endl;
             return std::nullopt;

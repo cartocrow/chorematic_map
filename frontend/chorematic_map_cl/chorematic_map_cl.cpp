@@ -5,7 +5,6 @@
 
 #include <nlohmann/json.hpp>
 
-#include <cartocrow/core/centroid.h>
 #include <cartocrow/core/region_map.h>
 #include <cartocrow/core/region_arrangement.h>
 #include <cartocrow/core/transform_helpers.h>
@@ -22,6 +21,70 @@
 
 using namespace cartocrow;
 using json = nlohmann::json;
+
+namespace {
+renderer::RenderPath convertShapeToRenderPath(const ipe::Shape& shape, const ipe::Matrix& matrix) {
+    renderer::RenderPath renderPath;
+    for (int i = 0; i < shape.countSubPaths(); ++i) {
+        if (shape.subPath(i)->type() != ipe::SubPath::ECurve) {
+            throw std::runtime_error("Encountered closed ellipse or B-spline; unimplemented");
+        }
+        const ipe::Curve* curve = shape.subPath(i)->asCurve();
+        for (int j = 0; j < curve->countSegments(); ++j) {
+            ipe::CurveSegment segment = curve->segment(j);
+            Point<Inexact> last;
+            if (segment.type() == ipe::CurveSegment::ESegment || segment.type() == ipe::CurveSegment::EArc) {
+                if (j == 0) {
+                    ipe::Vector v = matrix * segment.cp(0);
+                    Point<Inexact> pt(v.x, v.y);
+                    last = pt;
+                    renderPath.moveTo(pt);
+                }
+                ipe::Vector v = matrix * segment.last();
+                Point<Inexact> pt(v.x, v.y);
+                if (pt != last) {
+                    last = pt;
+                    if (segment.type() == ipe::CurveSegment::ESegment) {
+                        renderPath.lineTo(pt);
+                    } else {
+                        auto m = segment.matrix();
+                        auto clockwise = m.a[3] < 0;
+                        auto center = matrix * ipe::Vector(m.a[4], m.a[5]);
+                        renderPath.arcTo({center.x, center.y}, clockwise, pt);
+                    }
+                }
+            }
+        }
+
+        renderPath.close();
+    }
+    return renderPath;
+}
+
+/// Reads the first path in a single-page Ipe file as a render path.
+renderer::RenderPath loadIpePath(const std::filesystem::path& ipeFile) {
+    std::shared_ptr<ipe::Document> document = IpeReader::loadIpeFile(ipeFile);
+
+    if (document->countPages() == 0) {
+        throw std::runtime_error("Cannot read map from an Ipe file with no pages");
+    } else if (document->countPages() > 1) {
+        throw std::runtime_error("Cannot read map from an Ipe file with more than one page");
+    }
+
+    ipe::Page* page = document->page(0);
+
+    for (int i = 0; i < page->count(); ++i) {
+        ipe::Object* object = page->object(i);
+        if (object->type() != ipe::Object::Type::EPath) {
+            continue;
+        }
+        ipe::Path* path = object->asPath();
+        return convertShapeToRenderPath(path->shape(), path->matrix());
+    }
+
+    throw std::runtime_error("Could not find a path in the ipe file");
+}
+}
 
 int main(int argc, char* argv[]) {
     if (argc != 3 && argc != 4) {
@@ -73,7 +136,7 @@ int main(int argc, char* argv[]) {
     renderer::RenderPath schematization;
     if (schematize) {
         auto schematizationPath = projectFilename.parent_path() / projectData["schematization"];
-        schematization = orthogonal_transform(trans, IpeReader::loadIpePath(schematizationPath));
+        schematization = renderer::orthogonal_transform(trans, loadIpePath(schematizationPath));
     }
 
     auto entryToColor = [](const nlohmann::basic_json<>& entry) {
