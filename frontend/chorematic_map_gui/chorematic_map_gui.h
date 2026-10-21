@@ -23,7 +23,6 @@
 #include <QLineEdit>
 
 using namespace cartocrow;
-using namespace cartocrow::renderer;
 using namespace cartocrow::chorematic_map;
 
 class ChorematicMapDemo : public QMainWindow {

@@ -131,7 +131,7 @@ class Choropleth {
 
 /// Draws a \ref Choropleth. One should pass a color for each bin of the choropleth.
 /// Drawing style can be configured via \ref ChoroplethPainting::Options.
-class ChoroplethPainting : public renderer::GeometryPainting {
+class ChoroplethPainting : public GeometryPainting {
   public:
 	Choropleth& m_choropleth;
 	std::vector<Color> m_colors;
@@ -163,7 +163,7 @@ class ChoroplethPainting : public renderer::GeometryPainting {
 		std::copy(begin, end, std::back_inserter(m_colors));
 	}
 
-	void paint(renderer::GeometryRenderer& renderer) const override;
+	void paint(GeometryRenderer& renderer) const override;
 };
 }
 

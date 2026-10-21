@@ -515,7 +515,7 @@ ChorematicMapDemo::ChorematicMapDemo() {
 		}
 	}, "Outline");
 
-	m_renderer->addPainting([this](renderer::GeometryRenderer& renderer) {
+	m_renderer->addPainting([this](GeometryRenderer& renderer) {
 		renderer.setMode(GeometryRenderer::stroke);
 		for (const auto& point : m_sample.m_points) {
 			renderer.setStroke(Color{0, 0, 0}, 1.0);
@@ -523,7 +523,7 @@ ChorematicMapDemo::ChorematicMapDemo() {
 		}
 	}, "Samples");
 
-	m_renderer->addPainting([this, offWhite](renderer::GeometryRenderer& renderer) {
+	m_renderer->addPainting([this, offWhite](GeometryRenderer& renderer) {
         RenderPath renderPath;
         auto&& polys = m_sampler->getLandmassPolys();
         for (const auto& poly : polys) {

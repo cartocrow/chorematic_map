@@ -23,8 +23,8 @@ using namespace cartocrow;
 using json = nlohmann::json;
 
 namespace {
-renderer::RenderPath convertShapeToRenderPath(const ipe::Shape& shape, const ipe::Matrix& matrix) {
-    renderer::RenderPath renderPath;
+RenderPath convertShapeToRenderPath(const ipe::Shape& shape, const ipe::Matrix& matrix) {
+    RenderPath renderPath;
     for (int i = 0; i < shape.countSubPaths(); ++i) {
         if (shape.subPath(i)->type() != ipe::SubPath::ECurve) {
             throw std::runtime_error("Encountered closed ellipse or B-spline; unimplemented");
@@ -62,7 +62,7 @@ renderer::RenderPath convertShapeToRenderPath(const ipe::Shape& shape, const ipe
 }
 
 /// Reads the first path in a single-page Ipe file as a render path.
-renderer::RenderPath loadIpePath(const std::filesystem::path& ipeFile) {
+RenderPath loadIpePath(const std::filesystem::path& ipeFile) {
     std::shared_ptr<ipe::Document> document = IpeReader::loadIpeFile(ipeFile);
 
     if (document->countPages() == 0) {
@@ -105,8 +105,8 @@ int main(int argc, char* argv[]) {
     std::ifstream f(projectFilename);
     json projectData = json::parse(f);
 
-    std::shared_ptr<renderer::GeometryPainting> painting;
-    std::shared_ptr<renderer::GeometryPainting> debugPainting;
+    std::shared_ptr<GeometryPainting> painting;
+    std::shared_ptr<GeometryPainting> debugPainting;
 
     RegionMap map = ipeToRegionMap(mapFilename, true);
     auto arr = std::make_shared<RegionArrangement>(regionMapToArrangementParallel(map));
@@ -133,10 +133,10 @@ int main(int argc, char* argv[]) {
     auto trans = fitInto(arrBbox, bboxOutput);
 
     bool schematize = projectData.contains("schematization");
-    renderer::RenderPath schematization;
+    RenderPath schematization;
     if (schematize) {
         auto schematizationPath = projectFilename.parent_path() / projectData["schematization"];
-        schematization = renderer::orthogonal_transform(trans, loadIpePath(schematizationPath));
+        schematization = orthogonal_transform(trans, loadIpePath(schematizationPath));
     }
 
     auto entryToColor = [](const nlohmann::basic_json<>& entry) {
@@ -161,8 +161,8 @@ int main(int argc, char* argv[]) {
 
     chorematic_map::ChoroplethPainting choroplethP(choropleth, colors.begin(), colors.end(), choroplethPOptions);
 
-    auto pr = std::make_shared<renderer::PaintingRenderer>();
-    renderer::GeometryRenderer& gr = *pr;
+    auto pr = std::make_shared<PaintingRenderer>();
+    GeometryRenderer& gr = *pr;
     if (!schematize) {
         choroplethP.paint(gr);
     }
@@ -193,7 +193,7 @@ int main(int argc, char* argv[]) {
     auto disks = chorematic_map::fitDisks(choropleth, sample, invert, false, false, false);
 
     if (schematize) {
-        gr.setMode(renderer::GeometryRenderer::fill);
+        gr.setMode(GeometryRenderer::fill);
         auto bgBin = disks[0].bin == 0 ? 1 : 0;
         gr.setFill(choroplethP.m_colors[bgBin]);
         gr.draw(schematization);
@@ -201,7 +201,7 @@ int main(int argc, char* argv[]) {
 
     for (const auto& disk : disks) {
         for (const auto& binDisk : disks) {
-            gr.setMode(renderer::GeometryRenderer::stroke | renderer::GeometryRenderer::fill);
+            gr.setMode(GeometryRenderer::stroke | GeometryRenderer::fill);
             gr.setFill(choroplethP.m_colors[binDisk.bin]);
             if (!schematize) {
                 gr.setFillOpacity(127);
@@ -229,14 +229,14 @@ int main(int argc, char* argv[]) {
             gr.draw(transform(trans, approximate(outlinePoly)));
         }
     } else {
-        gr.setMode(renderer::GeometryRenderer::stroke);
+        gr.setMode(GeometryRenderer::stroke);
         gr.setStroke(outlineColor, 4);
         gr.draw(schematization);
     }
 
     painting = pr;
 
-    cartocrow::renderer::SvgRenderer renderer(painting);
+    cartocrow::SvgRenderer renderer(painting);
     renderer.save(outputFilename);
     return 0;
 }

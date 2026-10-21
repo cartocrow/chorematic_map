@@ -4,7 +4,7 @@
 #include <cartocrow/core/rectangle_helpers.h>
 
 namespace cartocrow::chorematic_map {
-using namespace renderer;
+using namespace cartocrow;
 
 PolygonWithHoles<Inexact> transform(const CGAL::Aff_transformation_2<Inexact>& t, const PolygonWithHoles<Inexact>& pwh) {
     Polygon<Inexact> outerT;

@@ -14,7 +14,6 @@
 using namespace emscripten;
 
 using namespace cartocrow;
-using namespace cartocrow::renderer;
 using namespace cartocrow::chorematic_map;
 
 using json = nlohmann::json;
