@@ -5,7 +5,8 @@
 
 namespace cartocrow::chorematic_map {
 std::vector<BinDisk> fitDisks(const Choropleth& choropleth, const WeightedRegionSample<Exact>& sample,
-                              bool invert, bool computeScores, bool heuristic, bool symmetricDifference) {
+                              bool invert, bool computeScores, bool heuristic, bool symmetricDifference,
+                              std::optional<std::function<void(int)>> progress) {
 	using RegionWeight = WeightedRegionSample<Exact>::RegionWeight;
 
 	std::vector<int> binsToFit;
@@ -62,7 +63,7 @@ std::vector<BinDisk> fitDisks(const Choropleth& choropleth, const WeightedRegion
 		}
 
 		std::optional<GeneralCircle<Exact>> circle;
-		InducedDiskW iDisk = smallest_maximum_weight_disk(weightedPoints.begin(), weightedPoints.end());
+		InducedDiskW iDisk = smallest_maximum_weight_disk(weightedPoints.begin(), weightedPoints.end(), progress);
 		auto [p1, p2, p3] = iDisk;
 		if (p1.has_value() && p2.has_value() && p3.has_value()) {
 			if (abs(Triangle<Inexact>(p1->point, p2->point, p3->point).area()) < M_EPSILON) {

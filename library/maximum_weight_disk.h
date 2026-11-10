@@ -45,11 +45,17 @@ InducedDiskW smallest_maximum_weight_disk(InputIterator begin, InputIterator end
 		InducedDiskW disk;
 	};
 
-	auto task = [nPoints, &pos, &begin, &end](int iStart, int iEnd) {
+	// Only the sequential computation reports progress, as the percentage of pairs of positive points that is done.
+	auto task = [nPoints, &pos, &begin, &end, &progress](int iStart, int iEnd, bool reportProgress) {
 	  double localBestWeight = 0.0;
 	  double localSquaredRadius = 0.0;
 	  InducedDiskW localBestTriple(std::nullopt, std::nullopt, std::nullopt);
 		for (int i = iStart; i < iEnd; ++i) {
+			if (reportProgress && progress.has_value()) {
+				double remaining = static_cast<double>(pos.size() - i) * (pos.size() - i - 1);
+				double total = static_cast<double>(pos.size()) * (pos.size() - 1);
+				(*progress)(static_cast<int>(100 * (1 - remaining / total)));
+			}
 			for (int j = i + 1; j < pos.size(); ++j) {
 				WeightedPoint pi = pos[i];
 				WeightedPoint pj = pos[j];
@@ -153,7 +159,12 @@ InducedDiskW smallest_maximum_weight_disk(InputIterator begin, InputIterator end
 		}
 	}
 
+#ifdef __EMSCRIPTEN__
+	// WebAssembly builds without thread support cannot start threads.
+	bool useParallel = false;
+#else
 	bool useParallel = nPoints > 32;
+#endif
 
 	std::vector<std::future<Result>> results;
 	if (useParallel) {
@@ -163,7 +174,7 @@ InducedDiskW smallest_maximum_weight_disk(InputIterator begin, InputIterator end
 		for (int i = 0; i < n / step; ++i) {
 			int iStart = std::ceil(i * step);
 			int iEnd = std::ceil((i + 1) * step);
-			results.push_back(std::async(std::launch::async, task, iStart, iEnd));
+			results.push_back(std::async(std::launch::async, task, iStart, iEnd, false));
 		}
 
 		for (auto& futureResult : results) {
@@ -179,7 +190,7 @@ InducedDiskW smallest_maximum_weight_disk(InputIterator begin, InputIterator end
 
 		return overallBestTriple;
 	} else {
-		return task(0, pos.size()).disk;
+		return task(0, pos.size(), true).disk;
 	}
 }
 

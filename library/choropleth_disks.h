@@ -22,9 +22,12 @@ struct BinDisk {
 /// \p invert parameter can be set to true to fit to the first class instead.
 /// When the \p computeScores parameter is set, then the score field of the \ref BinDisk is set to its normalized score.
 /// When the \p heuristic parameter is set, the radius of the disk is perturbed to locally optimize the score of the disk.
+/// If \p progress is set, it is called with the percentage of the computation of each disk that is done; see
+/// \ref smallest_maximum_weight_disk.
 std::vector<BinDisk> fitDisks(const Choropleth& choropleth, const WeightedRegionSample<Exact>& sample,
                               bool invert = false, bool computeScores = false, bool heuristic = false,
-                              bool symmetricDifference = false);
+                              bool symmetricDifference = false,
+                              std::optional<std::function<void(int)>> progress = std::nullopt);
 
 std::pair<GeneralCircle<Exact>, double>
 perturbDiskRadius(const GeneralCircle<Exact>& disk,
