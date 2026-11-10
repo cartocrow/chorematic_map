@@ -804,6 +804,49 @@ class Sampler {
 		return sample;
 	}
 
+  private:
+	/// The points that lie inside the polygon.
+	static std::vector<Point<Exact>> pointsInPolygon(const std::vector<Point<Exact>>& points,
+	                                                 const PolygonWithHoles<Exact>& poly) {
+		std::vector<Point<Exact>> inside;
+		for (const auto& pt : points) {
+			if (oriented_side(pt, poly) == CGAL::ON_POSITIVE_SIDE) {
+				inside.push_back(pt);
+			}
+		}
+		return inside;
+	}
+
+	/// Move each point to the centroid of its Voronoi cell, within the arrangement of a component.
+	static std::vector<Point<Exact>> voronoiIteration(const RegionArrangement& arr, const PL& pl,
+	                                                  const Rectangle<Exact>& bb,
+	                                                  const std::vector<Point<Exact>>& points) {
+		std::vector<Point<Exact>> approximated;
+		for (const auto& pt : points) {
+			auto apt = approximate(pt);
+			approximated.emplace_back(apt.x(), apt.y());
+		}
+		std::vector<Point<Exact>> newPoints;
+		voronoiMoveToCentroid(arr, pl, approximated.begin(), approximated.end(), std::back_inserter(newPoints), bb);
+		return newPoints;
+	}
+
+	/// The state of Voronoi sampling that is computed in steps; see startVoronoiUniform.
+	struct VoronoiSampling {
+		std::vector<Point<Exact>> points;
+		int iters;
+		bool perRegion;
+		/// The component that is being handled, and the number of iterations done for it.
+		int component = 0;
+		int iteration = 0;
+		/// Whether the points of the component have been selected; they are in current.
+		bool selected = false;
+		std::vector<Point<Exact>> current;
+		std::vector<Point<Exact>> result;
+	};
+	std::optional<VoronoiSampling> m_voronoi;
+
+  public:
 	/// Generate samples uniformly at random over the arrangement.
 	/// The weight of a sample point is equal to the weight of the region it lies in.
 	/// Perturb via Voronoi.
@@ -812,6 +855,17 @@ class Sampler {
 	               int iters,
 	               std::optional<std::function<void(int)>> progress = std::nullopt,
 	               std::optional<std::function<bool()>> cancelled = std::nullopt) {
+#ifdef __EMSCRIPTEN__
+		// WebAssembly builds without thread support cannot start threads, so the computation is done step by step.
+		// Progress is reported as a percentage.
+		startVoronoiUniform(n, iters);
+		while (!voronoiStep()) {
+			if (progress.has_value()) {
+				(*progress)(static_cast<int>(100 * voronoiProgress()));
+			}
+		}
+		return voronoiResult();
+#endif
 		std::vector<Point<Exact>> points;
         uniformRandomPoints(n, std::back_inserter(points));
 
@@ -825,68 +879,19 @@ class Sampler {
 		auto task = [&points, &iters, &arrs, &pls, &bbs, &polys](int iStart, int iEnd) {
 			std::vector<Point<Exact>> outputPoints;
 			for (int i = iStart; i < iEnd; ++i) {
-				const RegionArrangement& arr = *arrs[i];
-				const auto& pl = *pls[i];
-				const auto& bb = bbs[i];
-				const PolygonWithHoles<Exact>& poly = polys[i];
-				std::vector<Point<Exact>> samplesInComponent;
-				for (const auto& pt : points) {
-					if (oriented_side(pt, poly) == CGAL::ON_POSITIVE_SIDE) {
-						samplesInComponent.push_back(pt);
-					}
-//					auto obj = pl.locate(pt);
-//					if (auto fhp = boost::get<RegionArrangement::Face_const_handle>(&obj)) {
-//						auto fh = *fhp;
-//						if (!fh->data().empty()) {
-//							samplesInComponent.push_back(pt);
-//						}
-//					} else {
-//						std::cerr << "Voronoi sample point does not lie in a face" << std::endl;
-//					}
-				}
+				auto samplesInComponent = pointsInPolygon(points, polys[i]);
 				if (samplesInComponent.empty())
 					continue;
-//				if (samplesInComponent.size() == 1 &&
-//					arr.number_of_faces() - arr.number_of_unbounded_faces() == 1) {
-//					auto centr = centroid(outerPoly);
-//					if (oriented_side(centr, outerPoly) == CGAL::ON_POSITIVE_SIDE) {
-//						outputPoints.push_back(centr);
-//						continue;
-//					}
-//				}
-
-				int originalNumber = samplesInComponent.size();
-				std::vector<Point<Exact>> newPoints;
 				for (int j = 0; j < iters; ++j) {
-					//				if (progress.has_value()) {
-					//					auto f = *progress;
-					//					f(j);
-					//				}
-					//				if (cancelled.has_value()) {
-					//					auto f = *cancelled;
-					//					if (f()) break;
-					//				}
-					std::vector<Point<Exact>> approximated;
-					for (const auto& pt : samplesInComponent) {
-						auto apt = approximate(pt);
-						approximated.emplace_back(apt.x(), apt.y());
-					}
-					voronoiMoveToCentroid(arr, pl, approximated.begin(), approximated.end(),
-										  std::back_inserter(newPoints), bb);
-					samplesInComponent.clear();
-					samplesInComponent.resize(0);
-					std::copy(newPoints.begin(), newPoints.end(),
-							  std::back_inserter(samplesInComponent));
-					newPoints.clear();
-					newPoints.resize(0);
+					samplesInComponent = voronoiIteration(*arrs[i], *pls[i], bbs[i], samplesInComponent);
 				}
 				std::copy(samplesInComponent.begin(), samplesInComponent.end(), std::back_inserter(outputPoints));
 			}
 			return outputPoints;
 		};
 
-		int nThreads = 32;
 		int nArrs = arrs.size();
+		int nThreads = 32;
 		std::vector<std::future<std::vector<Point<Exact>>>> results;
 		double step = nArrs / static_cast<double>(nThreads);
 		for (int i = 0; i < nArrs / step; ++i) {
@@ -899,6 +904,75 @@ class Sampler {
 			std::copy(pts.begin(), pts.end(), std::back_inserter(finalPoints));
 		}
 		return {finalPoints.begin(), finalPoints.end(), m_assignWeight};
+	}
+
+	/// Start Voronoi sampling (see voronoiUniform) that is computed in steps, so that the computation can be
+	/// interrupted between steps. Call voronoiStep until it returns true, and then voronoiResult.
+	/// A step is one Voronoi iteration for one component (a region, or with sample per region off, a landmass).
+	void startVoronoiUniform(int n, int iters) {
+		VoronoiSampling v;
+		uniformRandomPoints(n, std::back_inserter(v.points));
+		v.iters = iters;
+		v.perRegion = m_samplePerRegion;
+		// Compute the ancillary data now, so that the steps take little time each.
+		if (v.perRegion) {
+			getRegionCCArrs(); getRegionCCPls(); getRegionCCBbs(); getRegionCCPolys();
+		} else {
+			getLandmassArrs(); getLandmassPls(); getLandmassBbs(); getLandmassPolys();
+		}
+		m_voronoi = std::move(v);
+	}
+
+	/// Do a step of the Voronoi sampling started with startVoronoiUniform; returns whether it is done.
+	bool voronoiStep() {
+		auto& v = *m_voronoi;
+		auto& arrs = v.perRegion ? getRegionCCArrs() : getLandmassArrs();
+		auto& pls = v.perRegion ? getRegionCCPls() : getLandmassPls();
+		auto& bbs = v.perRegion ? getRegionCCBbs() : getLandmassBbs();
+		auto& polys = v.perRegion ? getRegionCCPolys() : getLandmassPolys();
+		int nArrs = arrs.size();
+
+		auto finishComponent = [&v]() {
+			std::copy(v.current.begin(), v.current.end(), std::back_inserter(v.result));
+			v.current.clear();
+			v.selected = false;
+			v.iteration = 0;
+			++v.component;
+		};
+
+		while (v.component < nArrs) {
+			int i = v.component;
+			if (!v.selected) {
+				v.current = pointsInPolygon(v.points, polys[i]);
+				v.selected = true;
+			}
+			if (!v.current.empty() && v.iteration < v.iters) {
+				v.current = voronoiIteration(*arrs[i], *pls[i], bbs[i], v.current);
+				++v.iteration;
+				if (v.iteration == v.iters) finishComponent();
+				return v.component >= nArrs;
+			}
+			// Components without points, or without iterations to do, take no step.
+			finishComponent();
+		}
+		return true;
+	}
+
+	/// The fraction of the Voronoi sampling started with startVoronoiUniform that is done.
+	double voronoiProgress() const {
+		const auto& v = *m_voronoi;
+		int nArrs = v.perRegion ? m_regionCCArrs.size() : m_landmassArrs.size();
+		if (nArrs == 0) return 1;
+		double componentFraction = v.iters > 0 ? static_cast<double>(v.iteration) / v.iters : 0;
+		return (v.component + componentFraction) / nArrs;
+	}
+
+	/// The sample of the Voronoi sampling started with startVoronoiUniform, once voronoiStep returned true.
+	WeightedRegionSample<Exact> voronoiResult() {
+		auto& v = *m_voronoi;
+		WeightedRegionSample<Exact> sample(v.result.begin(), v.result.end(), m_assignWeight);
+		m_voronoi = std::nullopt;
+		return sample;
 	}
 
 	WeightedRegionSample<Exact> squareGrid(int n, int maxIters = 50) {
